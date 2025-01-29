@@ -17,87 +17,55 @@ date: "2024-12-29"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r include=FALSE}
+- Required R packages, install them if need it
+
+```{r Rpackeges, include=FALSE}
 #install.packages("ggplot2")
 #install.packages("caret")
 #install.packages("finalfit")
 library(ggplot2)
 library(caret) # specificity 
-library(cowplot) # for panels
-library(car) # anova
 library(finalfit) # odd plots 
 library(dplyr)
 library(epiR)
-#library(hrbrthemes)
 ```
 
+- Load the data: 
+  - "id" 
+  - "Age": age in years in a continous varaible
+  - "Age3_log"
+  - "Age_grup": 1/2/3
+  - "Age_grupF" : as a factor variable
+  - "Response": not used
+  - "Response_fac": Yes / No as a factor variable
+  - "Resp_type": FN   FP   TN   TP
+  - "Present2"
+  - "Present2_fac": Yes / No as a factor variable
+  - "ok" 
+  - "fail"
+  - "Pos_Mirar_pregunta"
+  - "NPos_mirades"
+  - "RT": Reaction time in s
+  - "SetSize"
+  - "SetSizeF": as a factor variable
+  - "Search"
+  - "SearchF": as a factor variable
+  - "Fixated" : 0 / 1, yes no 
+  - "FixatedF": as a factor variable                   
+  
 
+ 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-set_number=4
-#nom_guardar <- paste("/Users/ldempere/Research/Supervision/PhDsupervision/Marta/experiments/EyeTracker_Phd/Dades_lauraUVIC_",  set_number, ".Rda")
-nom_guardar <- paste("C:/Users/martigar/Desktop/dades/Laura_dempere/Dades_lauraUVIC_",  set_number, ".Rda")
-
+nom_guardar <- paste("C:/Users/martigar/Desktop/dades/Laura_dempere/Data.Rda")
 load(nom_guardar)
-
-df2 <- subset(df,  df$id!=15)
-df2 <- subset(df2,  df2$id!=28)
-df2 <- subset(df2,  df2$id!=58)
-df2 <- subset(df2,  df2$id!=69)
-df2 <- subset(df2,  df2$id!=89)
-
-df_clean <- subset(df2, df2$RT>0.05)
-df_clean <- subset(df_clean, df_clean$RT<4.99)
-rm(df2,df)
-# mira el numero de posicions mirades REVISAR SI VOLEM ( O COM!!!!!) MARINA
-# el 9 es el residual on s'acumulen totes les seq de llargaria major que 8
-if (length(table( df_clean$NPos_mirades))>8) {
-  df_clean$NPos_mirades[df_clean$NPos_mirades>8]=9
-}
-# crear variables que me faran falta
-# ok : 0--> fail
-#      1--> ok
-df_clean$ok <- df_clean$id
-df_clean$ok[df_clean$Response==df_clean$Present2] <- 1 # encerts
-df_clean$ok[df_clean$Response!=df_clean$Present2] <- 0 # fallos
-
-# Fail: 1--> fail
-#       0--> ok
-df_clean$fail <- df_clean$id
-df_clean$fail[df_clean$Response==df_clean$Present2] <- 0 # encerts
-df_clean$fail[df_clean$Response!=df_clean$Present2] <- 1 # fallos
-
-# factor variable (for plots)
-df_clean$grupF    <- factor(df_clean$grup)#, order=T, levels =c("1", "2", "3"))
-df_clean$Age3_log <- factor(df_clean$grup)#, order=T, levels =c("1", "2", "3"))
-df_clean$Age_grup <- factor(df_clean$grupF)
-levels(df_clean$Age_grup) <- c("Young","Middle","Old")
-df_clean$MiratF   <- factor(df_clean$Mirat)
-df_clean$NitemF   <- factor(df_clean$Nitem)#,order=T, levels =c("2", "4", "6"))
-df_clean$CercaF   <- factor(df_clean$Cerca, levels = c("0","1", "2", "3","4","5", "6"))
-
-# reorder the levels (JUST) for the logistic models:
-df_clean <- within(df_clean, Age3_log <- relevel(Age3_log, ref = 2))
-
-# factor variable (for the plots)
-df_clean$Response_fac[df_clean$Response==1] <- "Yes"
-df_clean$Response_fac[df_clean$Response==0] <- "No"
-df_clean$Response_fac <- factor(df_clean$Response_fac, levels=c("Yes", "No"))
-
-df_clean$Present2_fac[df_clean$Present2==1] <- "Yes"
-df_clean$Present2_fac[df_clean$Present2==0] <- "No"
-df_clean$Present2_fac <- factor(df_clean$Present2_fac, levels=c("Yes", "No"))
-
-# Resp_type
-df_clean$Resp_type[(df_clean$Response_fac=="No" & df_clean$Present2_fac=="No")]  <-"TN"
-df_clean$Resp_type[(df_clean$Response_fac=="No" & df_clean$Present2_fac=="Yes")] <-"FN" 
-df_clean$Resp_type[(df_clean$Response_fac=="Yes" & df_clean$Present2_fac=="Yes")]<-"TP" 
-df_clean$Resp_type[(df_clean$Response_fac=="Yes" & df_clean$Present2_fac=="No")] <-"FP" 
+#colnames(df_clean)
 ```
 
+- Figure specifications
 
-###  figure specifications
-
-```{r}
+```{r Figure_spe, include=FALSE}
+# if you want to save the paper figures 1, else 0
+save_figures <- 0
 word_size_legend <- 12
 # size of the ticks (numbers)
 word_size_text_x<- 20
@@ -117,100 +85,105 @@ word_size_title_x2 <-16
 word_size_title_facet <- 16
 #cols_spe_sen <- c("Specificity" = "#09283CFF", "Sensitivity" = "#3CC8C0FF", "Accuracy" = "#F2EBBBFF")
 cols_spe_sen <- c("Specificity" = "#AC1A2FFF", "Sensitivity" = "#274E37FF", "Accuracy" = "#95999DFF")
-#
+
 #cols_Age     <- c("Young"= "red","Middle"= "blue","Old" = "black" )
 cols_Age     <- c("Young"= "#004488FF","Middle"="#DDAA33FF","Old" = "#BB5566FF")
-cols_setsize <- c("2"="#041E42FF","4"="#BE3A34FF",  "6"="#FFA400FF")
-cols_setsize <- c("#999999", "#E69F00", "#56B4E9")
+cols_setsize2 <- c("2"="#041E42FF","4"="#BE3A34FF",  "6"="#FFA400FF")
+cols_setsize <- c("2"="#999999", "4"="#E69F00", "6"="#56B4E9")
 cols_resType <- c("TP"="#DD5129FF", "FN"="#0F7BA2FF","TN"="#43B284FF","FP"="#FAB255FF")
 ```
 
-# Performance Outcomes in the Delayed Match-to-Sample (DMS) Task
+
+# Age-related variability in performance on the delayed match-to-sample (DMS) task 
 
 ## DMS task as a binary classification problem.
 
-- Global (data must be factor)
-  - Sensitivity:  
-  - Specificity:
-  - Accuracy:
-
 ```{r Global_Sen_spe, echo=FALSE}
 t <- confusionMatrix( df_clean$Present2_fac,df_clean$Response_fac)
-t$byClass['Sensitivity']
-t$byClass['Specificity']
-t$overall['Accuracy']
+sen <- 100 * t$byClass['Sensitivity']
+sen
+spe <- 100 * t$byClass['Specificity']
+spe
+Acc <- 100 * t$overall['Accuracy']
+Acc
 rm(t)
 ```
 
+- The DMS task can be conceptualised as a binary classification problem. Consequently, the overall task performance for all valid trials across the entire set of subjects is presented in Table 1 as a confusion matrix. The task yields a notably high proportion of correct responses, with an overall sensitivity of 85.4% (`r round(sen,1)`) and specificity of 85.2% (`r round(spe,1)`), reflecting similar values for both measures.
+
 ### TABLE 1
 
-- Response  Subject responde:  0 Absent  1 Present.
-- Present2  Test Item in memory :  0 Absent  1 Present.
-- REVISAR PQ ARA NO TINC CLAR 
+- Confusion matrix derived from the DMS task conceptualised as a binary classification problem
+  - Subject response:  0 Absent  1 Present.
+  - Present Test Item in memory :  0 Absent  1 Present.
 
 ```{r table1, echo=FALSE}
-t <- table(df_clean$Present2_fac, df_clean$Response_fac )
-colnames(t) <-  c("Resp Absent" ,"Resp Present" )
-rownames(t) <-  c("Test Absent", "Test Present")
+t <- table(df_clean$Response_fac,df_clean$Present2_fac)
+colnames(t) <-  c("Sub resp Absent" ,"Sub resp Present" )
+rownames(t) <-  c("Test item Absent", "Test item Present")
 t
 tnorm <- t
-tnorm[1,1] <- t[1,1]/ (t[1,1]+t[2,1])
-tnorm[1,2] <- t[1,2]/ (t[1,1]+t[2,1])
-
-tnorm
-#rm(t)
+tnorm[1,1] <- t[1,1]/ (t[1,1]+t[1,2])
+tnorm[1,2] <- t[1,2]/ (t[1,1]+t[1,2])
+tnorm[2,1] <- t[2,1]/ (t[2,2]+t[2,1])
+tnorm[2,2] <- t[2,2]/ (t[2,2]+t[2,1])
+round(tnorm*100,1)
+rm(tnorm)
 ```
 
-
-### FIGURE 4: age grup vs Specificity/sens/acc
-
-```{r Data_Age_Sen_spe, echo=FALSE}
-spe_Y <- c()
-sen_Y <- c()
-acc_Y <- c()
-sen_Y_low <- c()
-sen_Y_upp <- c()
-spe_Y_low <- c()
-spe_Y_upp <- c()
-acc_Y_low <- c()
-acc_Y_upp <- c()
+```{r Data_fig4, echo=FALSE}
+spe <- c()
+sen <- c()
+acc <- c()
+sen_low <- c()
+sen_upp <- c()
+spe_low <- c()
+spe_upp <- c()
+acc_low <- c()
+acc_upp <- c()
 for (i_Age in c("1","2","3")) {
-  df_Age <- subset(df_clean, df_clean$grupF==i_Age)
+  df_Age <- subset(df_clean, df_clean$Age_grupF==i_Age)
   t <- confusionMatrix(df_Age$Present2_fac,df_Age$Response_fac)
 
-  spe_Y <- c( spe_Y, t$byClass['Specificity']*100)
-  sen_Y <- c( sen_Y, t$byClass['Sensitivity']*100)
-  acc_Y <- c( acc_Y, t$overall['Accuracy']   *100)
+  spe <- c( spe, t$byClass['Specificity']*100)
+  sen <- c( sen, t$byClass['Sensitivity']*100)
+  acc <- c( acc, t$overall['Accuracy']   *100)
   
-  #---------------------------------------
-  acc_Y_low <- c(acc_Y_low, t$overall['AccuracyLower']*100)
-  acc_Y_upp <- c(acc_Y_upp, t$overall['AccuracyUpper']*100)
+  acc_low <- c(acc_low, t$overall['AccuracyLower']*100)
+  acc_upp <- c(acc_upp, t$overall['AccuracyUpper']*100)
   t3 <- epi.tests(table(df_Age$Present2_fac, df_Age$Response_fac), conf.level = 0.95)
-  sen_Y_low <- c(sen_Y_low, t3$detail[3,3]*100)
-  sen_Y_upp <- c(sen_Y_upp, t3$detail[3,4]*100)
-  spe_Y_low <- c(spe_Y_low, t3$detail[4,3]*100)
-  spe_Y_upp <- c(spe_Y_upp, t3$detail[4,4]*100)
-  #--------------------------------------
+  
+  sen_low <- c(sen_low, t3$detail[3,3]*100)
+  sen_upp <- c(sen_upp, t3$detail[3,4]*100)
+  spe_low <- c(spe_low, t3$detail[4,3]*100)
+  spe_upp <- c(spe_upp, t3$detail[4,4]*100)
 }
 
 df_fig4 <- data.frame( 
-  Percentage= c(spe_Y, sen_Y, acc_Y ), 
-  IC_low    = c(spe_Y_low, sen_Y_low, acc_Y_low),
-  IC_up     = c(spe_Y_upp, sen_Y_upp, acc_Y_upp),
+  Percentage= c(spe, sen, acc ), 
+  IC_low    = c(spe_low, sen_low, acc_low),
+  IC_up     = c(spe_upp, sen_upp, acc_upp),
   Measure   = factor(c(rep("Specificity",3),rep("Sensitivity",3),rep("Accuracy",3)),  levels=c("Specificity","Sensitivity","Accuracy")),
-  Ege_grup  = factor(c(rep(c("Young","Middle", "Old"),3)), levels = c("Young","Middle", "Old")))
+  Age_grup  = factor(c(rep(c("Young","Middle", "Old"),3)), levels = c("Young","Middle", "Old")))
+```
 
-rm(spe_Y, sen_Y, spe_Y_upp,spe_Y_low, 
-   acc_Y, acc_Y_low,acc_Y_upp, sen_Y_upp, 
+- Sensitivity for young participants is 93.1% (`r round(sen[1],1)`), with a specificity of 88.8% (`r round(spe[1],1)`). 
+- In contrast, middle-aged participants show a sensitivity of 86.9% (`r round(sen[2],1)`) and a specificity of 86.2% (`r round(spe[2],1)`). 
+- Older participants exhibit the lowest values, with sensitivity at 76.2% (`r round(sen[3],1)`) and specificity at 79.8% (`r round(spe[3],1)`). 
+
+
+```{r include=FALSE}
+rm(spe, sen, spe_upp,spe_low, 
+   acc, acc_low,acc_upp, sen_upp, 
    t, t3, df_Age, i_Age)
 ```
 
+### FIGURE 4 
 
-```{r Data_Age_Sen_spe2, echo=FALSE}
-tiff("Figure4.tiff", units="in", width=12, height=8, res=300)
-#png(filename="Figure4.png", units="in", width=8, height=7, res=300)
+- Sensitivity, specificity, and accuracy in the DMS task, categorised by age group. Bars indicate the 95% CI.
 
-ggplot(df_fig4, aes(x=Ege_grup, y=Percentage, fill= Measure))+
+```{r figure4, echo=FALSE}
+ggplot(df_fig4, aes(x=Age_grup, y=Percentage, fill= Measure))+
   geom_bar(position="dodge", stat="identity")+
   geom_errorbar( aes(ymin=IC_low, ymax=IC_up), width=0.4, colour="black",position=position_dodge(.9))+
    ylim(0, 100)+
@@ -229,36 +202,26 @@ ggplot(df_fig4, aes(x=Ege_grup, y=Percentage, fill= Measure))+
         # fondo
         panel.background = element_rect(fill = "transparent",
                                   colour = NA_character_,
-                                size = 0.5, linetype = "solid"),)+
+                                linewidth = 0.5, linetype = "solid"),)+
   scale_fill_manual("legend", values = cols_spe_sen)
-
-dev.off()
-getwd()
 ```
 
+### FIGURE 5
 
-### TABLE 2: same as figure 4 but with table 
+- Sensitivity, specificity, and accuracy in the DMS task, separated by age group and as a function of memory set size. Bars indicate the 95% CI. 
 
-```{r table2, echo=FALSE}
-df_fig4
-```
-### FIGURE 5: item vs age grup vs Specificity/sens/acc
-
-- Same as figura 4 but with de Nitem 
-- PODRIEM TINDRE INTERVALS DE CONFIANça! mirarho MARINA 
-- FER CHECK QUE ALGO RARO HA PASSAT
-```{r Data_NItem_Age_Sen_spe, echo=FALSE}
-V_NitemF= c("2", "4", "6")
-V_edat= c("Young","Middle", "Old")
-V_NitemF2 <- c()
-Ege_grup <- c()
+```{r Data_fig5, echo=FALSE}
+V_SetSize= c("2", "4", "6")
+V_age= c("Young","Middle", "Old")
+V_SetSize2 <- c()
+Age_grup <- c()
 Measure  <- c()
 Vmeasure <- c()
 Vmeasure_low<- c()
 Vmeasure_up<- c()
-for (i_Nitem in  c("2", "4", "6")) {
+for (i_SetSize in  c("2", "4", "6")) {
   for (i_Age in c(1:3)) {
-    df_Age <- subset(df_clean, df_clean$grupF==i_Age & df_clean$NitemF==i_Nitem )
+    df_Age <- subset(df_clean, df_clean$Age_grupF==i_Age & df_clean$SetSize==i_SetSize )
     t <- confusionMatrix(df_Age$Present2_fac, df_Age$Response_fac)
     sen_Y <- t$byClass['Sensitivity']*100
     spe_Y <- t$byClass['Specificity']*100
@@ -275,8 +238,8 @@ for (i_Nitem in  c("2", "4", "6")) {
     Vmeasure <- c(Vmeasure,  spe_Y, sen_Y, acc_Y)
     Vmeasure_low<- c(Vmeasure_low,  spe_Y_low, sen_Y_low, acc_Y_low)
     Vmeasure_up <- c(Vmeasure_up,   spe_Y_upp, sen_Y_upp, acc_Y_upp)
-    V_NitemF2<- c(V_NitemF2, rep(paste( i_Nitem, ""),3))
-    Ege_grup <- c(Ege_grup, rep(V_edat[i_Age],3) )
+    V_SetSize2<- c(V_SetSize2, rep(paste( i_SetSize, ""),3))
+    Age_grup <- c(Age_grup, rep(V_age[i_Age],3) )
     Measure  <- c(Measure,  c("Specificity","Sensitivity","Accuracy"))
 
   }
@@ -284,66 +247,81 @@ for (i_Nitem in  c("2", "4", "6")) {
 df_fig5 <- data.frame( Percentage= Vmeasure, 
                        IC_low= Vmeasure_low,
                        IC_up= Vmeasure_up, 
-                       Ege_grup = factor(Ege_grup, levels = c("Young","Middle", "Old")),
+                       Age_grup = factor(Age_grup, levels = c("Young","Middle", "Old")),
                        Measure  = factor(Measure,  levels = c("Sensitivity","Specificity","Accuracy")),
-                       V_Nitem= V_NitemF2)
-df_fig5
-
+                       V_SetSize= V_SetSize2)
 rm(Vmeasure,  spe_Y, sen_Y, acc_Y,Vmeasure_low,  spe_Y_low, sen_Y_low, acc_Y_low,
-   Vmeasure_up,   spe_Y_upp, sen_Y_upp, acc_Y_upp,V_NitemF2,Ege_grup,Measure,
-   i_Nitem, i_Age, t,t3, df_Age)
+   Vmeasure_up,   spe_Y_upp, sen_Y_upp, acc_Y_upp,V_SetSize2,Age_grup,Measure,
+   i_SetSize, i_Age, t,t3, df_Age)
 ```
 
 
-```{r Item_ Age_Sen_spe, echo=FALSE}
-tiff("Figure5.tiff", units="in", width=12, height=8, res=300)
-#png(filename="Figure5.png", units="in", width=12, height=7, res=300)
-
- ggplot(df_fig5,aes(x=V_Nitem, y=Percentage, fill=Ege_grup)) +
+```{r figure5, echo=FALSE}
+ggplot(df_fig5,aes(x=V_SetSize, y=Percentage, fill=Age_grup)) +
  geom_bar(position="dodge", stat="identity")+
  geom_errorbar( aes(ymin=IC_low, ymax=IC_up), width=0.4, colour="black",position=position_dodge(.9))+
  xlab("Set size")+
- #theme_classic()+
  theme(aspect.ratio=1,text = element_text(),
        axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
         
-       #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y = element_text(size = word_size_title_y2),
        axis.text.y  = element_text(size = word_size_text_y2),
 
        legend.text=element_text(size=word_size_legend2),
        legend.title =element_blank(),
-       # fondo
+       # background
        panel.background = element_rect(fill = "transparent",
                                   colour = NA_character_),
        # The facet title
         strip.text = element_text(size = word_size_title_facet))+
   scale_fill_manual("legend", values = cols_Age)+
   facet_wrap(~ Measure)
- 
-dev.off()
-getwd()
 ```
 
 
-## Reaction time (RT) as proxy of perceived difficulty.
-
-### FIGURE 6a
+## Reaction time (RT) as a proxy for perceived difficulty
 
 
-```{r echo=FALSE}
-#png(filename="Figure6a.png", units="in", width=8, height=7, res=300)
-tiff("Figure6a.tiff", units="in", width=12, height=8, res=300)
-ggplot(df_clean,aes(x=RT, y=NitemF, fill=NitemF)) +
+```{r kruskal_RT_SetSize, echo=FALSE}
+df_young <- subset(df_clean, df_clean$Age_grupF=="1")
+df_Middle<- subset(df_clean, df_clean$Age_grupF=="2")
+df_Old   <- subset(df_clean, df_clean$Age_grupF=="3")
+
+kt1 <- kruskal.test(RT~SetSize, data = df_young)
+kt2 <-kruskal.test(RT~SetSize, data = df_Middle)
+kt3 <-kruskal.test(RT~SetSize, data = df_Old)
+
+kt1$statistic
+kt2$statistic
+kt3$statistic
+
+test1 <- pairwise.wilcox.test(x = df_young$RT, g = df_young$SetSize, p.adjust.method = "holm" )
+test2 <-pairwise.wilcox.test(x = df_Middle$RT,g = df_Middle$SetSize, p.adjust.method = "holm" )
+test3 <-pairwise.wilcox.test(x = df_Old$RT,   g = df_Old$SetSize, p.adjust.method = "holm" )
+
+print("P values of the pairwise wilcox")
+test1$p.value
+test2$p.value
+test3$p.value
+```
+
+- Specifically, for young adults, the Kruskal-Wallis test revealed a significant effect (χ2 = 206.68  `r round(kt1$statistic,2)`, df = 2, p < 0.001), as did the middle-aged group (χ2 = 382.34 `r round(kt2$statistic,2)`, df = 2, p < 0.001) and the older adult group (χ2 = `r round(kt3$statistic,2)`, df = 2, p < 0.001). Post-hoc analyses, conducted through pairwise comparisons using the Wilcoxon test, revealed significant differences in RT across all set sizes within each age group (p < 0.001 ) 
+
+
+### FIGURE 6
+
+- Figure 6. (a) Boxplots corresponding to the RT distributions (outliers have been removed to facilitate interpretation of the results), 
+
+- PASSA ALGO EN ELS COLOR -->   scale_fill_manual("legend", values = cols_setsize)+
+```{r figure6a, echo=FALSE}
+ggplot(df_clean,aes(x=RT, y=SetSizeF, fill=SetSize)) +
   geom_boxplot(outlier.shape = NA) +
   xlim(0 , 2)+
   xlab("RT (s)")+
   ylab("Set size")+
-  theme(#aspect.ratio=1,text = element_text(),
-       axis.title.x = element_text( size = word_size_title_x2),
+  theme(axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
-        
        #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y = element_text(size = word_size_title_y2),
        axis.text.y  = element_text(size = word_size_text_y2),
@@ -355,19 +333,15 @@ ggplot(df_clean,aes(x=RT, y=NitemF, fill=NitemF)) +
                                   colour = NA_character_),
        # The facet title
            strip.text = element_text(size = word_size_title_facet))+
-   scale_fill_manual("legend", values = cols_setsize)+
+  #scale_fill_manual("legend", values = cols_setsize2)+
   facet_wrap(~ Age_grup, ncol= 1)
-dev.off()
-getwd()
 ```
 
+- Figure 6. (b) RT distributions, obtained from smoothed histograms, for various memory set sizes for the different age groups.
 
 ```{r fig6b, echo=FALSE}
-#png(filename="Figure6b.png", units="in", width=8, height=7, res=300)
-tiff("Figure6b.tiff", units="in", width=12, height=8, res=300)
-ggplot(df_clean, aes(x=RT, group=NitemF, fill=NitemF, ..density..)) +
+ggplot(df_clean, aes(x=RT, group=SetSize, fill=SetSize, ..density..)) +
   geom_density(adjust=0.8, alpha=.5)+
-  #geom_histogram()+
   xlim(0 , 2)+
   xlab("RT (s)")+
   theme(legend.text=element_text(size=word_size_legend),
@@ -387,63 +361,17 @@ ggplot(df_clean, aes(x=RT, group=NitemF, fill=NitemF, ..density..)) +
                                   colour = NA_character_),
        # The facet title
            strip.text = element_text(size = word_size_title_facet))+
-    scale_fill_manual("legend", values = cols_setsize)+
+    #scale_fill_manual("legend", values = cols_setsize)+
   facet_wrap(~ Age_grup, ncol= 1)
-dev.off()
-getwd()
 ```
 
 
-- ANOVAS RT vs Nitem
-
-```{r anova_RT_Nitem, eval=FALSE, include=FALSE}
-lm_Y <- lm(RT~Nitem  ,data = subset(df_clean, df_clean$grupF=="1"))
-anova(lm_Y)
-lm_M <- lm(RT~Nitem  ,data = subset(df_clean, df_clean$grupF=="2"))
-anova(lm_M)
-lm_O <- lm(RT~Nitem  ,data = subset(df_clean, df_clean$grupF=="3"))
-anova(lm_O)
-```
-
-- Non Parametric ANOVA RT vs Nitem,
-
-```{r kruskal_RT_Nitem, eval=FALSE, include=FALSE}
-df_young <- subset(df_clean, df_clean$grupF=="1")
-df_Middle<- subset(df_clean, df_clean$grupF=="2")
-df_Old   <- subset(df_clean, df_clean$grupF=="3")
-
-kruskal.test(RT~Nitem, data = df_young)
-pairwise.wilcox.test(x = df_young$RT, g = df_young$Nitem, p.adjust.method = "holm" )
-kruskal.test(RT~Nitem, data = df_Middle)
-pairwise.wilcox.test(x = df_Middle$RT,g = df_Middle$Nitem, p.adjust.method = "holm" )
-kruskal.test(RT~Nitem, data = df_Old)
-pairwise.wilcox.test(x = df_Old$RT,   g = df_Old$Nitem, p.adjust.method = "holm" )
-```
-
-- non Parametric ANOVA RT vs Response type,
-
-```{r kruskal_RT_Resp_type, eval=FALSE, include=FALSE}
-df_young <- subset(df_clean, df_clean$grupF=="1")
-df_Middle<- subset(df_clean, df_clean$grupF=="2")
-df_Old   <- subset(df_clean, df_clean$grupF=="3")
-
-kruskal.test(RT~Resp_type, data = df_young)
-pairwise.wilcox.test(x = df_young$RT, g = df_young$Resp_type, p.adjust.method = "holm" )
-kruskal.test(RT~Resp_type, data = df_Middle)
-pairwise.wilcox.test(x = df_Middle$RT, g = df_Middle$Resp_type, p.adjust.method = "holm" )
-kruskal.test(RT~Resp_type, data = df_Old)
-pairwise.wilcox.test(x = df_Old$RT, g = df_Old$Resp_type, p.adjust.method = "holm" )
-```
 
 ### FIGURE 7
 
+- Figure 7 a) Boxplots corresponding to the RT distributions (outliers have been removed to facilitate interpretation of the results)
 
-- ojo en la densitat per a que no siga mes gran que 1
-
-
-```{r echo=FALSE}
-tiff("Figure7a.tiff", units="in", width=12, height=8, res=300)
-#png(filename="Figure7a.png", units="in", width=8, height=7, res=300)
+```{r figure7a, echo=FALSE}
 ggplot(df_clean,aes(x=RT, y=Resp_type, fill=Resp_type)) +
   geom_boxplot(outlier.shape = NA) +
   xlim(0 , 2)+
@@ -451,7 +379,6 @@ ggplot(df_clean,aes(x=RT, y=Resp_type, fill=Resp_type)) +
   theme(#aspect.ratio=1,text = element_text(),
        axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
-        
        #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y =element_blank(),
        axis.text.y  = element_text(size = word_size_text_y2),
@@ -466,14 +393,11 @@ ggplot(df_clean,aes(x=RT, y=Resp_type, fill=Resp_type)) +
   scale_fill_manual("legend", values = cols_resType)+
   facet_wrap(~ Age_grup, ncol= 1)
 
-dev.off()
-getwd()
 ```
 
+- Figure 7 (b) RT density distributions for various behavioural response outcomes across different age groups.
 
-```{r echo=FALSE}
-#png(filename="Figure7b.png", units="in", width=8, height=7, res=300)
-tiff("Figure7b.tiff", units="in", width=12, height=8, res=300)
+```{r firuger7b, echo=FALSE}
 # ..scaled..
 # ..count..
 ggplot(df_clean, aes(x=RT, group=Resp_type, fill=Resp_type, ..density..)) +
@@ -483,7 +407,6 @@ ggplot(df_clean, aes(x=RT, group=Resp_type, fill=Resp_type, ..density..)) +
      theme(#aspect.ratio=1,text = element_text(),
        axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
-        
        #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y = element_blank(),
        axis.text.y  = element_text(size = word_size_text_y2),
@@ -497,29 +420,31 @@ ggplot(df_clean, aes(x=RT, group=Resp_type, fill=Resp_type, ..density..)) +
            strip.text = element_text(size = word_size_title_facet))+
     scale_fill_manual("legend", values = cols_resType)+
   facet_wrap(~ Age_grup, ncol= 1)
-
-dev.off()
-getwd()
 ```
 
 
 ## Impact of age, set size, and reaction time on error risk.
 
-### Logistic model 1
-
-$P(fail) =  \beta_0 +\beta_1 \cdot Age_3 + \beta_2 \cdot NitemF +\beta_3 \cdot RT $
-
-```{r echo=FALSE}
-glm1 <-  glm(fail ~  Age3_log + NitemF + RT , data = df_clean, family = binomial)
-summary(glm1)
+```{r logistic_model1, echo=FALSE}
+glm1 <-  glm(fail ~  Age3_log + SetSizeF + RT , data = df_clean, family = binomial)
+#summary(glm1)
 odd_glm1 <- data.frame(cbind(exp(coef(glm1)), exp(confint(glm1))))
 names(odd_glm1)<-c('OR', 'lower', 'upper')
 odd_glm1
 ```
+- A logistic regression model incorporating age, memory set size, and RT was employed to examine the association between these variables and task performance across trials. In this model, age was stratified into three groups, as outlined in the methodology section (young, middle-aged, and elderly participants).
 
-### FIGURE 8: odd ratios model 1
+$$P(error) \sim   \beta_0 +\beta_1 \cdot Age_3 + \beta_2 \cdot SetSize +\beta_3 \cdot RT$$
 
-```{r echo=FALSE}
+- The results indicate that increasing the memory set size beyond two items significantly elevates the risk of error (see Fig.8). Specifically, the probability of making an error with a memory set size of 6 is 7.9 (`r round(odd_glm1$OR[5],2)`) times higher than with a set size of 2. When the set size is reduced to 4, the likelihood of error decreases to 3.7 (`r round(odd_glm1$OR[4],2)`) times that of a set size of 2. Comparatively, age, when considered in isolation, poses a lower risk for errors. Belonging to the older age group increases the likelihood of making an error by 1.9  (`r round(odd_glm1$OR[6],2)`)times compared to the middle-aged group, while the odds of error in the younger group are 0.7 (`r round(odd_glm1$OR[2],2)`) times those of middle-aged participants. Additionally, longer RTs are associated with a higher probability of error, further highlighting the impact of task difficulty on performance.
+
+
+
+### FIGURE 8
+
+- Odds ratios from the logistic regression model incorporating age group, memory set size, and RT as predictors of task performance. A logarithmic scale is applied for visualisation. Bars indicate the 95% IC
+
+```{r figure8, echo=FALSE}
 # remove the intercept
 odd2 <- odd_glm1[-c(1),]
 odd2 <- data.frame(
@@ -532,7 +457,6 @@ ticks<-c(seq(0.05, 0.8, by =0.4), seq(1, 10, by =2))
 title<-"Odds Ratio"
 
 
-#png(filename="Figure8.png", units="in", width=8, height=7, res=300)
 ggplot(odd2, aes(y= OR, x = vars)) +
  geom_errorbar(aes(ymin=lower, ymax=upper), width=.2) +
   scale_y_log10(breaks=ticks, labels = ticks) +
@@ -547,47 +471,47 @@ ggplot(odd2, aes(y= OR, x = vars)) +
         axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),)+
      theme(legend.position="non")
-#dev.off()
-#getwd()
 ```
 
-# WM capacity
+# WM capacity across the lifespan
 
-### FIGURE 9 kc
+## WM capacity decreases with age and declines further when overloaded
 
-- K de cowan : false alarm dir que si i no estava (false positive): $(H-Fa)/ hit \cdot N$
-- hit es : TP /(TP + FN)
-- False es :FP /(FP+ TN)
+- Cowan's Kc : $(H-FA)/ H \cdot N$
+- H :  TP /(TP + FN)
+- FA: FP /(FP+ TN)
 
-```{r echo=FALSE}
+### FIGURE 9 
+
+- Figure 9 (a) Distribution of Kc across age groups and set sizes, (b) Multivariate linear regression lines of Kc as a function of age (continuous variable) and set size (categorical variable)
+
+```{r Data_figure9, echo=FALSE}
 aux <- c()
-for (i_Nitem in c(2,4,6)) {
-  print(i_Nitem)
-  df_N <- subset(df_clean,  df_clean$Nitem==i_Nitem )
+for (i_SetSize in c(2,4,6)) {
+  df_N <- subset(df_clean,  df_clean$SetSize==i_SetSize )
   t    <- table(df_N$id,df_N$Resp_type)
-  aux  <- rbind( aux, cbind(t, unique(df_N$id) ,rep(i_Nitem,nrow(t)) ))
+  aux  <- rbind( aux, cbind(t, unique(df_N$id) ,rep(i_SetSize,nrow(t)) ))
 }
-colnames(aux) <- c("FN", "FP", "TN", "TP", "id", "Nitem")
+colnames(aux) <- c("FN", "FP", "TN", "TP", "id", "SetSize")
 df_fig9 <- as.data.frame(aux)
 df_fig9$Hit <- df_fig9$TP/(df_fig9$TP+ df_fig9$FN) 
 df_fig9$FA  <- df_fig9$FP/(df_fig9$TN+ df_fig9$FP) 
-df_fig9$KC  <- df_fig9$Nitem * (df_fig9$Hit-df_fig9$FA)/df_fig9$Hit
+df_fig9$KC  <- df_fig9$SetSize * (df_fig9$Hit-df_fig9$FA)/df_fig9$Hit
 
-xx <- unique(df_clean[c("id", "Age_grup")])
-xx2 <- unique(df_clean[c("id", "edat")])
+xx  <- unique(df_clean[c("id", "Age_grupF")])
+xx2 <- unique(df_clean[c("id", "Age")])
 
 df_fig9$Age <- xx2[,2]
 df_fig9$Age_grup <- xx[,2]
-df_fig9$Age_grup <- factor(df_fig9$Age_grup, levels = c("Young","Middle", "Old"))
-df_fig9$Nitem    <- factor(df_fig9$Nitem, levels = c("2","4", "6"))
+#df_fig9$Age_grup <- factor(df_fig9$Age_grup, levels = c("Young","Middle", "Old"))
+levels(df_fig9$Age_grup) <- c("Young","Middle", "Old")
+df_fig9$SetSize  <- factor(df_fig9$SetSize, levels = c("2","4", "6"))
 
 rm(df_N,xx2,xx,t,aux)
 ```
 
 ```{r fig9b, echo=FALSE}
-#png(filename="Figure9b.png", units="in", width=8, height=7, res=300)
-tiff("Figure9b.tiff", units="in", width=12, height=8, res=300)
-ggplot(df_fig9,aes(x=Age, y=KC, color=Nitem , group=Nitem ) )+
+ggplot(df_fig9,aes(x=Age, y=KC, color=SetSize , group=SetSize ) )+
   geom_point()+
   #scale_fill_manual("legend", values = cols_setsize)+
   geom_smooth(method = lm)+
@@ -605,89 +529,62 @@ ggplot(df_fig9,aes(x=Age, y=KC, color=Nitem , group=Nitem ) )+
        #legend.position="none",
        legend.text=element_text(size=word_size_legend2),
       
-       # fondo
-      # panel.background = element_rect(fill = "transparent",
-      #                            colour = NA_character_),
        # The facet title
        strip.text = element_text(size = word_size_title_facet))
-dev.off()
-getwd() 
+ 
 ```
 
-https://stackoverflow.com/questions/73354744/connect-medians-with-lines-in-dodged-boxplots-within-subgroups
+
 ```{r echo=FALSE, warning=TRUE}
 df <- df_fig9 %>%
-   group_by(Nitem, Age_grup) %>% 
+   group_by(SetSize, Age_grup) %>% 
    summarise_at(vars("KC"), funs(median = median))
 
-#png(filename="Figure9a.png", units="in", width=8, height=7, res=300)
-tiff("Figure9a.tiff", units="in", width=12, height=8, res=300)
- ggplot(df_fig9,aes(x=Nitem, y=KC, fill=Age_grup)) +
+ ggplot(df_fig9,aes(x=SetSize, y=KC, fill=Age_grup)) +
   geom_boxplot(outlier.shape = NA)+
    scale_fill_manual(name="Age",values=cols_Age)+
   scale_color_manual(name="Age",values=cols_Age)+
       labs( y = bquote(K[C]), x = "Set size") +
-   geom_segment(aes(   x = 1-0.25,    y = df$median[df$Nitem==2 & df$Age_grup== "Young"], 
-                    xend = 2-0.25, yend = df$median[df$Nitem==4 & df$Age_grup== "Young"]), data = df)+
-   geom_segment(aes(   x = 2-0.25,    y = df$median[df$Nitem==4 & df$Age_grup== "Young"], 
-                    xend = 3-0.25, yend = df$median[df$Nitem==6 & df$Age_grup== "Young"]), data = df)+
+   geom_segment(aes(   x = 1-0.25,    y = df$median[df$SetSize==2 & df$Age_grup== "Young"], 
+                    xend = 2-0.25, yend = df$median[df$SetSize==4 & df$Age_grup== "Young"]), data = df)+
+   geom_segment(aes(   x = 2-0.25,    y = df$median[df$SetSize==4 & df$Age_grup== "Young"], 
+                    xend = 3-0.25, yend = df$median[df$SetSize==6 & df$Age_grup== "Young"]), data = df)+
    
-   geom_segment(aes(   x = 1,    y = df$median[df$Nitem==2 & df$Age_grup== "Middle"], 
-                    xend = 2, yend = df$median[df$Nitem==4 & df$Age_grup== "Middle"]), data = df)+
-   geom_segment(aes(   x = 2,    y = df$median[df$Nitem==4 & df$Age_grup== "Middle"], 
-                    xend = 3, yend = df$median[df$Nitem==6 & df$Age_grup== "Middle"]), data = df)+
+   geom_segment(aes(   x = 1,    y = df$median[df$SetSize==2 & df$Age_grup== "Middle"], 
+                    xend = 2, yend = df$median[df$SetSize==4 & df$Age_grup== "Middle"]), data = df)+
+   geom_segment(aes(   x = 2,    y = df$median[df$SetSize==4 & df$Age_grup== "Middle"], 
+                    xend = 3, yend = df$median[df$SetSize==6 & df$Age_grup== "Middle"]), data = df)+
   
-   geom_segment(aes(   x = 1+0.25,    y = df$median[df$Nitem==2 & df$Age_grup== "Old"], 
-                    xend = 2+0.25, yend = df$median[df$Nitem==4 & df$Age_grup== "Old"]), data = df)+
-   geom_segment(aes(   x = 2+0.25,    y = df$median[df$Nitem==4 & df$Age_grup== "Old"], 
-                    xend = 3+0.25, yend = df$median[df$Nitem==6 & df$Age_grup== "Old"]), data = df)+
+   geom_segment(aes(   x = 1+0.25,    y = df$median[df$SetSize==2 & df$Age_grup== "Old"], 
+                    xend = 2+0.25, yend = df$median[df$SetSize==4 & df$Age_grup== "Old"]), data = df)+
+   geom_segment(aes(   x = 2+0.25,    y = df$median[df$SetSize==4 & df$Age_grup== "Old"], 
+                    xend = 3+0.25, yend = df$median[df$SetSize==6 & df$Age_grup== "Old"]), data = df)+
    theme_bw()+ theme_classic()+
    theme(#aspect.ratio=1,text = element_text(),
        axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
-        
        #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y =  element_text( size = word_size_title_y2),
        axis.text.y  = element_text(size = word_size_text_y2),
        #legend.position="none",
        legend.text=element_text(size=word_size_legend2),
-      
-       # fondo
-      # panel.background = element_rect(fill = "transparent",
-      #                            colour = NA_character_),
-       # The facet title
        strip.text = element_text(size = word_size_title_facet))
- 
-dev.off()
-getwd()
+
 ```
 
 
-- barres amb 1 sd, o mirar amb 1.96sd
+### TABLE 2 
 
-```{r echo=FALSE}
-df_fig9b <- df_fig9 %>%
-   group_by(Nitem, Age_grup) %>% 
-   summarise_at(vars("KC"), funs(mean = mean, sd = sd))
+- A multivariate linear regression model underscores the significance of both set size and age in accounting for the variability observed in KC (see Table 2).
 
-
-ggplot(df_fig9b,aes(x=Nitem, y=mean, color=Age_grup , group=Age_grup ) )+
-  geom_point()+
-  geom_line()+
-  geom_errorbar(aes(ymin = mean-1*sd, ymax = mean+1*sd), width = 0.2)
-#+  scale_x_continuous(breaks = c(2,4,6))
-  
-```
-
-### model lineal de la Kc 
-
-TAble 2 REVISAR 
+    - $K_C= \beta_0 +  \beta_1 Age+  \beta_2 SetSize$
+    - $K_C= \beta_0 +  \beta_1 Age+  \beta_2 SetSize+ \beta_{inte} Age \cdot SetSize$
 
 ```{r model_KC_vs_age_Kc}
-lm_KC1 <- lm(KC~Nitem+Age, data =df_fig9)
-summary(lm_KC1)
-lm_KC2 <- lm(KC~Nitem*Age, data =df_fig9)
-summary(lm_KC2)
+lm_KC1 <- lm(KC~SetSize+Age, data =df_fig9)
+round(lm_KC1$coefficients,3)
+lm_KC2 <- lm(KC~SetSize*Age, data =df_fig9)
+round(lm_KC2$coefficients,3)
 ```
 
 
@@ -695,18 +592,26 @@ summary(lm_KC2)
 
 ## Age-related changes in visual search strategy use.
 
-  - The most frequently employed strategies were deep search (S1), minimal search (S3), and mixed search (S4)
-  - we exclude the type 0 because a lack of data
+  - Type search equal to 0 is excluded because a lack of data to assing a serach type.
+  
+```{r echo=FALSE}
+df2 <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF<- factor(df2$Search, levels = c("1","2","3","4","5","6"))
+t           <- table(df2$SearchF)
+row.names(t)<- c("S1","S2","S3","S4","S5","Others")
+SearchFreq  <- round(100*t/sum(t),2)
+SearchFreq
+```
+  - Among the five distinct types of search patterns, each varying in the degree of focused attention on the visual items, the most frequently selected strategy was S1 (49.2%) (`r SearchFreq[1]`), followed by the S2 (9.8%) (`r SearchFreq[2]`) )and S3 (23.0%) (`r SearchFreq[3]`) search types (see Fig. 10). In contrast, peripheral search strategies (S4 and S5) were considerably less prevalent across all age groups, 0.6%  (`r SearchFreq[4]`) and 3.8% (`r SearchFreq[35]`) respectively, with this trend becoming more pronounced with increasing age. Notably, a substantial portion of trials (13.7%) (`r SearchFreq[6]`) exhibited a non-conclusive search pattern (S6), an outcome unsurprising iven that participants received no specific instructions on task execution.
 
-```{r}
-# we exclude the type 0 because a lack of data
-df2 <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF   <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
 
-t <- table(df2$CercaF, df2$grup)
+```{r echo=FALSE}
+df2       <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF<- factor(df2$Search, levels = c("1","2","3","4","5","6"))
+
+t <- table(df2$SearchF, df2$Age_grup)
 colnames(t) <- c("Young","Middle","Old")
 row.names(t)<- c("S1","S2","S3","S4","S5","Others")
-t
 
 tnorm <- rbind(round(t[,1]/sum(t[,1])*100,2),
   round(t[,2]/sum(t[,2])*100,2),
@@ -719,6 +624,13 @@ chisq.test(t)
 chisq.test(t[,c(1,2)])
 chisq.test(t[,c(2,3)])
 chisq.test(t[,c(1,3)])
+```
+
+
+ - Specifically, 50.0% of trials conducted by young participants employed strategies with intense focus on visual items (S1), a proportion that increased to 54.6% in middle-aged participants and decreased to 41.6% among older participants. Additionally, strategies that distributed attention between visual items and adjacent regions (S2) were observed in 10.0% of trials for young participants, 10.3% for middle-aged participants, and 8.9% for older participants. In contrast, exploratory patterns minimally directed toward colour items (S3) appeared in 15.7% of trials for young participants, 16.0% for middle-aged participants, and 40.4% for older participants. Age-related differences in strategy selection were statistically significant, as revealed by Pearson’s χ2 test (χ2 = 1455.6, df = 10, p < 0.001 ). When comparing specific age groups, significant differences were found between all pairs: young and middle-aged subjects (χ2 = 192.9, df = 5, p < 0.001 ); middle-aged with older individuals (χ2 = 783.76, df = 5, p < 0.001 ) and young individuals compared with older adults (χ2 = 993.41, df = 5, p < 0.001 ).
+
+
+```{r include=FALSE}
 # data for figure 10 
 Nsearch <- 6
 df_fig10 <- data.frame(
@@ -726,23 +638,18 @@ df_fig10 <- data.frame(
   Search=c(rep( c("S1","S2","S3","S4","S5","Others"),3)),
   Age_grup=c( rep("Young",Nsearch),rep("Middle",Nsearch),rep("Old",Nsearch)))
 
-
 rm(df2, tnorm, t)
-
 ```
 
-### FIGURE 10: search type
- 
-- MARINA veig que la del paper esta condicionada a algo, a la edat? osiga els colors sumen 100? 
-- porsarho en percentatge 
-- posar others al final
 
-```{r}
+### FIGURE 10
+ 
+- Prevalence of the different search types across age groups
+
+```{r Figure10,include=FALSE}
 df_fig10$Age_grup <- factor(df_fig10$Age_grup, levels = c("Young","Middle","Old"))
 df_fig10$Search   <- factor(df_fig10$Search, levels = c("S1","S2","S3","S4","S5","Others"))
 
-#png(filename="Figure10.png", units="in", width=8, height=7, res=300)
-tiff("Figure10.tiff", units="in", width=12, height=8, res=300)
 ggplot(df_fig10, aes(x=Search, y=Prevalence, fill= Age_grup))+
   geom_bar(position="dodge", stat="identity")+
  theme_classic()+
@@ -762,46 +669,32 @@ ggplot(df_fig10, aes(x=Search, y=Prevalence, fill= Age_grup))+
                                   colour = NA_character_,
                                 size = 0.5, linetype = "solid"))+
     scale_fill_manual("legend", values = cols_Age)
-   
-dev.off()
-getwd() 
 ```
 
-## Visual scrutiny of the memory set protects from errors.
 
-- Search types 2 and 6 were excluded from the analysis due to their overall prevalence being less than 5%, which
-could potentially result in misleading findings.
+
+## Visual scrutiny of the memory set protects from errors. 
+
+#### Logistic model 1
+
+- logistic regression model, incorporating both visual search strategy and age, was used to investigate the association between these variables and behavioural outcomes across trials. Age was again stratified into three groups.  The visual search types S4 and S5 were excluded from the analysis due to their overall292
+prevalence being less than 5%, which could potentially result in misleading findings
+
+$$P(error) \sim  \beta_0 +\beta_1 \cdot Age_{grup} + \beta_2 \cdot Search_{S1,S2,S3,S6}$$
+
+### FIGURE 11(a)
 
 ```{r echo=FALSE}
-df2 <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF   <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
-t <- round(table(df2$Cerca)/sum(table(df2$Cerca))*100, 2)
+df2 <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF   <- factor(df2$Search, levels = c("1", "2", "3","4","5","6"))
 
-names(t) <- c("S1","S2","S3","S4","S5","Others")
-t
-rm(df2,t)
-```
-
-
-### FIGURE 11 a: Logistic Model 2
-
-$P(fail) =  \beta_0 +\beta_1 \cdot Age_3 + \beta_2 \cdot Search$
-
-
-```{r}
-df2 <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF   <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
-
-df_model2 <- subset(df2,  df2$Cerca!=4  & df2$Cerca!=5)
-glm2 <-  glm(fail ~   Age3_log + CercaF, data = df_model2, family = binomial)
-summary(glm2)
-odd_glm2 <- data.frame(cbind(exp(coef(glm2)), exp(confint(glm2))))
+df_model2 <- subset(df2,  df2$Search!=4  & df2$Search!=5)
+glm2      <- glm(fail ~ Age3_log + SearchF, data = df_model2, family = binomial)
+#summary(glm2)
+odd_glm2   <- data.frame(cbind(exp(coef(glm2)), exp(confint(glm2))))
 names(odd_glm2)<-c('OR', 'lower', 'upper')
 odd_glm2
 ```
-
-
-### odd Ratios model 2
 
 
 ```{r echo=FALSE}
@@ -814,8 +707,6 @@ ticks<-c(seq(0.05, 0.9, by =0.15), seq(1,2.5 , by =0.5))
 color=c(rep("red",2),rep("blue",3))
 title<-"Odds Ratio"
 
-#png(filename="Figure11_a.png", units="in", width=8, height=7, res=300)
-tiff("Figure11_a.tiff", units="in", width=12, height=8, res=300)
 ggplot(odd2, aes(y= OR, x = vars)) +
   geom_errorbar(aes(ymin=lower, ymax=upper), width=.2) +
   scale_y_log10(breaks=ticks, labels = ticks) +
@@ -825,86 +716,63 @@ ggplot(odd2, aes(y= OR, x = vars)) +
   labs( x = 'Variables in the model', y = 'Odds Ratio') +
   theme_bw()+ theme_classic()+
   theme(axis.title.y = element_blank(),
-         axis.text.y = element_text(size = word_size_text_y2),
+        axis.text.y = element_text(size = word_size_text_y2),
         axis.title.x = element_text( size = word_size_title_x2),
-       axis.text.x = element_text(size = word_size_text_x2),)+
-     theme(legend.position="non")
-
-dev.off()
-getwd()
+       axis.text.x = element_text(size = word_size_text_x2),) +
+  theme(legend.position="non")
 ```
-- A specific analysis of how the probability of success varies according to the type of search reveals that this probability significantly increases (P = 0.885) if the encoding of the memory set follows a deep search pattern, as opposed to when any other strategy is used (P = 0.826).
-- This is supported by a 2-sample test for equality of proportions with continuity correction (𝜒2 = 114.02, df = 1, p-value < 2.2e-16). Once again, S2 and S6 search strategies were excluded from the study due to their low prevalence.
 
 
-```{r}
-t <- table( df_model2$ok, df_model2$CercaF)
+```{r echo=FALSE}
+t <- table( df_model2$ok, df_model2$SearchF)
 p_s1 <- t[2,1]/sum(t[,1])
-p_s1
 p_s <- sum(t[2,c(2,3,6)])/ (sum(t[2,c(2,3,6)])+ sum(t[1,c(2,3,6)]))
-p_s
-prop.test(x=c(t[2,1], sum(t[2,c(2,3,6)])), n=c(sum(t[,1]), sum(t[2,c(2,3,6)])+ sum(t[1,c(2,3,6)])) , p = NULL, alternative = "greater",  correct = TRUE)
+
+test <- prop.test(x=c(t[2,1], sum(t[2,c(2,3,6)])), n=c(sum(t[,1]), sum(t[2,c(2,3,6)])+ sum(t[1,c(2,3,6)])) , p = NULL, alternative = "greater",  correct = TRUE)
+test$statistic
+```
+
+- A specific analysis of how the probability of success varies according to the type of search reveals that this probability significantly increases (P = 0.881   (`r p_s1`)) if the encoding of the memory set follows a deep search pattern, as opposed to when any other strategy is used (P = 0.828  (`r p_s`)).
+
+- This is supported by a 2-sample test for equality of proportions with continuity correction (𝜒2 = (`r test$statistic`), df = 1, p-value < 2.2e-16). Once again, S2 and S6 search strategies were excluded from the study due to their low prevalence.
+
+```{r include=FALSE}
 rm(t, p_s1, p_s)
 ```
 
 
-## (EYE-TRACKING) Looking at the test target reduces the likelihood of errors.
-
-- revisar que vols dir aço- it.
-- A Pearson’s χ2 test with Yates' continuity correction confirms that task performance improves when the test item is fixated upon
-
-```{r echo=FALSE}
-df2 <- subset(df_clean, df_clean$CercaF!=0 )
-df2$CercaF   <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
-
-df_present <- subset(df2, df2$Present2==1 )
-t <- table(df_present$Mirat, df_present$ok)
-colnames(t) <- c("Fail","OK")
-rownames(t) <- c("Not Fixated","Fixated")
-round(t /c(rowSums(t))*100,3)
-chisq.test(t)
-```
-
-## Test item fixation enhances performance, while aging and perceived task difficulty increase error rates. 
-
 ### Logistic model 3
-- Incorporating the variable of whether the test item has been viewed into the logistic
-regression model previously proposed does not modify the primary conclusions regarding the impact
-of age, set size, and reaction time on error risk.
-- Laura compara resultats young vs middle
 
-$P(fail) =  \beta_0 +\beta_1 \cdot Mirat + \beta_2 \cdot Age_3 + \beta_3 \cdot RT$
+- Incorporating the variable of whether the test item has been viewed into the logistic regression model previously proposed does not modify the primary conclusions regarding the impact of age, set size, and reaction time on error risk.
+
+
+$$P(error) \sim  \beta_0 + \beta_1 \cdot RT + \beta_2 \cdot  Age_{grup} + \beta_3 \cdot Fixated_{yes,no}$$
 
 
 ```{r echo=FALSE}
-df2 <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF   <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
-
+df2 <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF<- factor(df2$Search, levels = c("1", "2", "3","4","5", "6"))
 df_present <- subset(df2, df2$Present2== 1  )
-glm3 <-  glm(fail ~  Mirat + Age3_log + RT , data = df_present, family = binomial)
-summary(glm3)
-odd_glm3 <- data.frame(cbind(exp(coef(glm3)), exp(confint(glm3))))
-names(odd_glm3)<-c('OR', 'lower', 'upper')
-odd_glm3
+glm3       <- glm(fail ~  Fixated + Age3_log + RT , data = df_present, family = binomial)
+#summary(glm3)
+odd3       <- data.frame(cbind(exp(coef(glm3)), exp(confint(glm3))))
+names(odd3)<-c('OR', 'lower', 'upper')
+odd3
 rm(df2)
 ```
 
-### FIGURE 11 b: oddratios logistic model 3
+### FIGURE 11(b)
 
-- MARINA REFER ESTA FIGURA 
-
-```{r echo=FALSE}
+```{r figure11b, echo=FALSE}
 # remove the intercept
-odd3 <- odd_glm3[-c(1),]
-odd3 <- data.frame(OR=odd2$OR,lower=odd2$lower, upper=odd2$upper,
+odd3 <- odd3[-c(1),]
+odd3 <- data.frame(OR=odd3$OR,lower=odd3$lower, upper=odd3$upper,
                    vars=c("Fixated", "Young vs Middle" , "Old vs Middle", "RT"))
-odd3$vars <- factor(odd2$vars , c("Fixated", "Young vs Middle" , "Old vs Middle", "RT"))
+odd3$vars <- factor(odd3$vars , c("Fixated", "Young vs Middle" , "Old vs Middle", "RT"))
 color=c("green",rep("red",2),1)
 ticks<-c(seq(0.05, 0.8, by =0.2), seq(1, 10, by =2))
 title<-"Odds Ratio"
 
-png(filename="Figure11_b.png", units="in", width=8, height=7, res=300)
-tiff("Figure11_b.tiff", units="in", width=12, height=8, res=300)
 ggplot(odd3, aes(y= OR, x = vars)) +
   geom_errorbar(aes(ymin=lower, ymax=upper), width=.2) +
   geom_point(colour=color, aes(size = 2)) +
@@ -916,40 +784,55 @@ ggplot(odd3, aes(y= OR, x = vars)) +
   #annotate("text", x = 6, y = 1.2, label = "Risk")+
      theme(legend.position="non")+
   theme(axis.title.y = element_blank(),
-         axis.text.y = element_text(size = word_size_text_y2),
+        axis.text.y = element_text(size = word_size_text_y2),
         axis.title.x = element_text( size = word_size_title_x2),
-       axis.text.x = element_text(size = word_size_text_x2),)+
-     theme(legend.position="non")
+        axis.text.x = element_text(size = word_size_text_x2))
 
-dev.off()
-getwd()
 ```
 
-## Impact of test item fixation during encoding across different ages. 
 
-- We next evaluate the interaction between age and the impact of fixating on the target during the encoding phase of WM.
+## Looking at the test target reduces the likelihood of errors.
+
+- A Pearson’s χ2 test with Yates’ continuity correction confirms that task performance improves when the test item is fixated upon (χ2 = 74.198, df = 1, p < 0.001 )
+
+```{r echo=FALSE}
+df2 <- subset(df_clean, df_clean$SearchF!=0 )
+df2$SearchF   <- factor(df2$Search, levels = c("1", "2", "3","4","5", "6"))
+
+df_present <- subset(df2, df2$Present2==1 )
+t <- table(df_present$Fixated, df_present$ok)
+colnames(t) <- c("Fail","OK")
+rownames(t) <- c("Not Fixated","Fixated")
+round(t /c(rowSums(t))*100,3)
+test <- chisq.test(t)
+test$statistic
+```
+
+## The detrimental effect of not fixating on test items during encoding increases with age
+
+- Error probability across age groups for two distinct conditions: fixating on the test item during encoding (blue) versus not fixating on it (red). (Left panel) All set sizes (S = 2, 4, 6); (middle panel) S = 2; and (right panel) S = 4, 6.
 
 ### FIGURE 12
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-v_edat <- c(19: 80)
-v_edat <- seq(19, 80, by= 5)
-N_edat <- length(v_edat)
+v_age <- c(19: 80)
+v_age <- seq(19, 80, by= 5)
+N_age <- length(v_age)
 
 
-newdata_1 <- data.frame( edat= v_edat, MiratF=factor(rep(0,N_edat)))
-newdata_11 <- data.frame( edat= v_edat+1, MiratF=factor(rep(0,N_edat)))
-newdata_12 <- data.frame( edat= v_edat+2, MiratF=factor(rep(0,N_edat)))
-newdata_2 <- data.frame( edat= v_edat, MiratF=factor(rep(1,N_edat)))
-newdata_22 <- data.frame( edat= v_edat+2, MiratF=factor(rep(1,N_edat)))
-newdata_21 <- data.frame( edat= v_edat+1, MiratF=factor(rep(1,N_edat)))
+newdata_1  <- data.frame( Age= v_age, FixatedF=factor(rep(0,N_age)))
+newdata_11 <- data.frame( Age= v_age+1, FixatedF=factor(rep(0,N_age)))
+newdata_12 <- data.frame( Age= v_age+2, FixatedF=factor(rep(0,N_age)))
+newdata_2  <- data.frame( Age= v_age, FixatedF=factor(rep(1,N_age)))
+newdata_22 <- data.frame( Age= v_age+2, FixatedF=factor(rep(1,N_age)))
+newdata_21 <- data.frame( Age= v_age+1, FixatedF=factor(rep(1,N_age)))
 # definim el subset de dades
-df2         <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF  <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
+df2         <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF <- factor(df2$Search, levels = c("1", "2", "3","4","5", "6"))
 df_present  <- subset(df2, df2$Present2== 1   )
 
 # fem model 
-glm_int <-  glm(fail ~  edat +  MiratF+ edat: MiratF , data = df_present, family = binomial)
+glm_int <-  glm(fail ~  Age + FixatedF+ Age:FixatedF , data = df_present, family = binomial)
 
 # calculem totes les prediccions del model
 Predicted_1 <- cbind(newdata_1, predict(glm_int, newdata = newdata_1, type = "link",se = TRUE))
@@ -967,21 +850,20 @@ Predicted_2 <- within(Predicted_2, {
 })
 
 # fem el plot
-df12_a <- data.frame( Age=      c(Predicted_2$edat,           Predicted_1$edat), 
-                   Pr_Error= c(Predicted_2$PredictedProb,  Predicted_1$PredictedProb),
-                   Fixating= c(rep("Yes",length(Predicted_2$edat)), rep("No",length(Predicted_1$edat))),
-                   UL=      c(Predicted_2$UL,              Predicted_1$UL), 
-                   LL=      c(Predicted_2$LL,              Predicted_1$LL))
+df12_a <- data.frame( Age=   c(Predicted_2$Age,  Predicted_1$Age), 
+                      Pr_Error= c(Predicted_2$PredictedProb,  Predicted_1$PredictedProb),
+                      Fixating= c(rep("Yes",length(Predicted_2$Age)),
+                                  rep("No",length(Predicted_1$Age))),
+                      UL=  c(Predicted_2$UL, Predicted_1$UL), 
+                      LL=  c(Predicted_2$LL, Predicted_1$LL))
 ```
-
-
 
 ```{r echo=FALSE}
 # definim el subset de dades
-df_present <-  subset(df_clean, df_clean$Present2== 1 & df_clean$Nitem==2 )
+df_present <-  subset(df_clean, df_clean$Present2== 1 & df_clean$SetSize==2 )
 
 # fem model 
-glm_int <-  glm(fail ~  edat +  MiratF+ edat: MiratF , data = df_present, family = binomial)
+glm_int <-  glm(fail ~  Age + FixatedF + Age:FixatedF, data = df_present, family = binomial)
 
 # calculem totes les prediccions del model
 Predicted_1 <- cbind(newdata_11, predict(glm_int, newdata = newdata_1, type = "link",se = TRUE))
@@ -999,9 +881,9 @@ Predicted_2 <- within(Predicted_2, {
 })
 
 # fem el plot
-df12_2 <- data.frame(Age= c(Predicted_2$edat, Predicted_1$edat), 
+df12_2 <- data.frame(Age= c(Predicted_2$Age, Predicted_1$Sge), 
                    Pr_Error= c(Predicted_2$PredictedProb,  Predicted_1$PredictedProb),
-                   Fixating= c(rep("Yes",length(Predicted_2$edat)), rep("No",length(Predicted_1$edat))),
+                   Fixating= c(rep("Yes",length(Predicted_2$Age)), rep("No",length(Predicted_1$Age))),
                    UL= c(Predicted_2$UL, Predicted_1$UL), 
                    LL= c(Predicted_2$LL, Predicted_1$LL))
 ```
@@ -1009,12 +891,12 @@ df12_2 <- data.frame(Age= c(Predicted_2$edat, Predicted_1$edat),
 
 ```{r echo=FALSE}
 # definim el subset de dades
-df2        <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
-df_present <- subset(df2, df2$Present2== 1 & df2$Nitem>2   )
+df2        <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF <- factor(df2$Search, levels = c("1", "2", "3","4","5", "6"))
+df_present <- subset(df2, df2$Present2== 1 & df2$SetSize>2   )
 
 # fem model 
-glm_int <-  glm(fail ~  edat +  MiratF+ edat: MiratF , data = df_present, family = binomial)
+glm_int <-  glm(fail ~  Age +  FixatedF+ Age: FixatedF , data = df_present, family = binomial)
 
 # calculem totes les prediccions del model
 Predicted_1 <- cbind(newdata_12, predict(glm_int, newdata = newdata_1, type = "link",se = TRUE))
@@ -1033,15 +915,14 @@ Predicted_2 <- within(Predicted_2, {
 })
 
 # fem el plot
-df12_46 <- data.frame( Age=      c(Predicted_2$edat,           Predicted_1$edat), 
+df12_46 <- data.frame( Age=      c(Predicted_2$Age,           Predicted_1$Age), 
                    Pr_Error= c(Predicted_2$PredictedProb,  Predicted_1$PredictedProb),
-                   Fixating= c(rep("Yes",length(Predicted_2$edat)), rep("No",length(Predicted_1$edat))),
+                   Fixating= c(rep("Yes",length(Predicted_2$Age)), rep("No",length(Predicted_1$Age))),
                    UL=  c(Predicted_2$UL, Predicted_1$UL), 
                    LL=  c(Predicted_2$LL,  Predicted_1$LL))
 ```
 
-
-```{r}
+```{r include=FALSE}
 df12 <- data.frame(
   Age= rep(df12_a$Age,3),
   P_error=c(df12_a$Pr_Error, df12_2$Pr_Error,df12_46$Pr_Error),
@@ -1052,11 +933,8 @@ df12 <- data.frame(
 ```
 
 
-
 ```{r figure12, echo=FALSE, message=FALSE, warning=FALSE}
-#png(filename="Figure12.png", units="in", width=8, height=7, res=300)
-tiff("Figure12.tiff", units="in", width=12, height=8, res=300)
- ggplot(df12, aes(x=Age, y=P_error, colour = Fixating))+
+ggplot(df12, aes(x=Age, y=P_error, colour = Fixating))+
   geom_point()+
   geom_line()+
   ylim(0, 0.35)+
@@ -1067,7 +945,6 @@ tiff("Figure12.tiff", units="in", width=12, height=8, res=300)
   theme(aspect.ratio=1,#text = element_text(),
        axis.title.x = element_text( size = word_size_title_x2),
        axis.text.x = element_text(size = word_size_text_x2),
-        
        #axis.ticks.y=element_text(size = word_size_text_x2),
        axis.title.y =element_blank(),
        axis.text.y  = element_text(size = word_size_text_y2),
@@ -1080,24 +957,22 @@ tiff("Figure12.tiff", units="in", width=12, height=8, res=300)
        # The facet title
            strip.text = element_text(size = word_size_title_facet))+
    facet_wrap(~ Set_size, nrow= 1)
-dev.off()
-getwd()
 ```
 
+# Visual scrutiny of memory set and serial order effects
 
-# Serial order effects during the encoding phase
 
-- LAURA TINC DUBTE DE QUE VA EN RECENCY
+## Serial order effects emerge despite simultaneous presentation of stimuli
 
-```{r figu13ab, echo=FALSE}
-df2        <- subset(df_clean, df_clean$CercaF!=0)
-df2$CercaF <- factor(df2$Cerca, levels = c("1", "2", "3","4","5", "6"))
+```{r figu13abDATA, echo=FALSE}
+df2        <- subset(df_clean, df_clean$SearchF!=0)
+df2$SearchF<- factor(df2$Search, levels = c("1", "2", "3","4","5", "6"))
 df_present <- subset(df2, df2$Present2== 1  )
 #------------------------------------------------
 Nlength=2
 #------------------------------------------------
 df_Nlength2 <- subset(df_present, df_present$NPos_mirades==Nlength & df_present$Pos_Mirar_pregunta>-99 )
-print("Posicions vs Ok: resencia")
+print("Posicions vs Ok: resency")
 t <- table(df_Nlength2$Pos_Mirar_pregunta, df_Nlength2$ok)
 t
 t1 <- t[1,2]/(t[1,1]+t[1,2])
@@ -1105,12 +980,12 @@ t0 <- t[2,2]/(t[2,1]+t[2,2])
 
 Sec_lengthF13 <- c("L=2","L=2")
 ValueF13a     <- c(t1,t0)
-XF8          <- c("-1","0")
+XF8           <- c("-1","0")
 #------------------------------------------------
 Nlength=3
 #------------------------------------------------
 df_Nlength3 <- subset(df_present, df_present$NPos_mirades==Nlength & df_present$Pos_Mirar_pregunta>-99 )
-print("Posicions (3) vs Ok: resencia")
+print("Posicions (3) vs Ok: recency")
 t <- table(df_Nlength3$Pos_Mirar_pregunta, df_Nlength3$ok)
 t
 t2 <- t[1,2]/(t[1,1]+t[1,2])
@@ -1133,7 +1008,7 @@ Value= c( t_primacy , t_recency)
 Nlength=4
 #------------------------------------------------
 df_Nlength4 <- subset(df_present, df_present$NPos_mirades==Nlength & df_present$Pos_Mirar_pregunta>-99 )
-print("Posicions (4) vs Ok: resencia")
+print("Posicions (4) vs Ok: recency")
 t <- table(df_Nlength4$Pos_Mirar_pregunta, df_Nlength4$ok)
 t
 t3 <- t[1,2]/(t[1,1]+t[1,2])
@@ -1141,10 +1016,10 @@ t2 <- t[2,2]/(t[2,1]+t[2,2])
 t1 <- t[3,2]/(t[3,1]+t[3,2])
 t0 <- t[4,2]/(t[4,1]+t[4,2])
 
-# fig 13a  t3 is missing for not having enough observations ----------------
-Sec_lengthF13 <- c(Sec_lengthF13, rep("L=4",3))
-ValueF13a    <- c(ValueF13a,  t2,t1,t0)
-XF8          <- c(XF8,"-2","-1","0")
+# fig 13a t3 is missing for not having enough observations ----------------
+Sec_lengthF13 <- c(Sec_lengthF13, rep("L=4",4))
+ValueF13a    <- c(ValueF13a, t3, t2,t1,t0)
+XF8          <- c(XF8,"-3","-2","-1","0")
 # Fig 13b ------------------
 # 0  o -1
 t_recency <-  (t[3,2] +t[4,2])/ (t[4,1]+t[4,2]+ t[3,1]+t[3,2] )
@@ -1160,7 +1035,7 @@ chisq.test(t2)
 Nlength=5
 #------------------------------------------------
 df_Nlength5 <- subset(df_present, df_present$NPos_mirades==Nlength & df_present$Pos_Mirar_pregunta>-99 )
-print("Posicions (5) vs Ok: resencia")
+print("Posicions (5) vs Ok: recency")
 t <- table(df_Nlength5$Pos_Mirar_pregunta, df_Nlength5$ok)
 
 t4 <- t[1,2]/(t[1,1]+t[1,2])
@@ -1170,9 +1045,9 @@ t1 <- t[4,2]/(t[4,1]+t[4,2])
 t0 <- t[5,2]/(t[5,1]+t[5,2])
 
 # fig 13a is missing for not having enough observations --------
-Sec_lengthF13 <- c(Sec_lengthF13, rep("L=5",4))
-ValueF13a      <- c(ValueF13a, t3, t2,t1,t0)
-XF8          <- c(XF8,"-3","-2","-1","0")
+Sec_lengthF13<- c(Sec_lengthF13, rep("L=5",5))
+ValueF13a    <- c(ValueF13a, t4, t3, t2,t1,t0)
+XF8          <- c(XF8,"-4","-3","-2","-1","0")
 # Fig 13b ------------------
 t_primacy <-  (t[1,2] +t[2,2] +t[3,2])/(t[1,1]+t[1,2]+ t[2,1]+t[2,2] +t[3,1]+t[3,2])
 t_recency <-  (t[4,2] +t[5,2])/(t[4,1]+t[4,2]+ t[5,1]+t[5,2] )
@@ -1181,8 +1056,8 @@ x         = c(x, c("Primacy", "Recency"))
 Value     = c( Value,c(t_primacy , t_recency))
 # test ------------------
 t2 <- rbind( (t[1,]+t[2,]+t[3,]), (t[4,] +t[5,]))
-chisq.test(t2)
-
+test <- chisq.test(t2)
+#------------------------------------------------------------------
 
 df_fig13a <- data.frame(Seq_length= factor( Sec_lengthF13),
                       Position  = factor(XF8, levels = c("-4","-3","-2","-1","0")),
@@ -1194,9 +1069,9 @@ df_fig13b <- data.frame(Seq_length=factor( Seq_length),
 
 ### FIGURE 13(a)
 
+- Assessment of serial order effects: (a) The probability of a correct response as a function of the serial order position of the last fixation on the test target during the visual exploration sequence during memory set encoding. This is presented for L = 2, 3, 4, and 5, (b) Serial order position has been categorised in two classes: recency (either last or second last position in the sequence), and primacy (prior to second last position in the sequence). This is presented for L = 3, 4, 5.
+
 ```{r fig13a, echo=FALSE}
-#png(filename="Figure13a.png", units="in", width=8, height=7, res=300)
-tiff("Figure13a.tiff", units="in", width=12, height=8, res=300)
 ggplot(df_fig13a, aes(y=Value, x=Position)) +
   geom_bar(position="dodge", stat="identity") +
   geom_vline(xintercept = 0.4, color = 'grey') +
@@ -1216,26 +1091,18 @@ ggplot(df_fig13a, aes(y=Value, x=Position)) +
                                   colour = NA_character_),
        # The facet title
         strip.text = element_text(size = word_size_title_facet))+
-
   facet_wrap(~ Seq_length, nrow=1)
-dev.off()
-getwd()
 ```
 
 ### FIGURE 13(b)
 
-- xi square dels acumulats
-- fer els test de comparacio per vore si les dif son significatives
-
 ```{r fig13b, echo=FALSE}
-#png(filename="Figue13b.png", units="in", width=8, height=7, res=300)
-tiff("Figure13b.tiff", units="in", width=12, height=8, res=300)
 df_fig13b
 ggplot(df_fig13b, aes(y=Value, x=x)) +
   geom_bar(position="dodge", stat="identity")+ 
-    geom_vline(xintercept = 0.4, color = 'grey') +
+  geom_vline(xintercept = 0.4, color = 'grey') +
   geom_hline(yintercept = 0, color = 'grey') +
- theme(aspect.ratio=1,text = element_text(),
+  theme(aspect.ratio=1,text = element_text(),
        axis.title.x =element_blank(),
        axis.text.x = element_text(size = word_size_text_x2),
         
@@ -1251,8 +1118,6 @@ ggplot(df_fig13b, aes(y=Value, x=x)) +
        # The facet title
         strip.text = element_text(size = word_size_title_facet))+
   facet_wrap(~ Seq_length)
-dev.off()
-getwd()
 ```
 
 
